@@ -268,20 +268,19 @@ mergeMay comp xs ys =
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% \usebackgroundtemplate{%
-%% \tikz[overlay,remember picture] \node[at=(current page.center)] {
-%%      \includegraphics[height=\paperheight]{angel}
-%% };
-%% }
-%% \begin{frame}{}\end{frame}
-%% \usebackgroundtemplate{}
+\usebackgroundtemplate{%
+\tikz[overlay,remember picture] \node[at=(current page.center)] {
+     \includegraphics[height=\paperheight]{angel}};
+}
+\begin{frame}{}\end{frame}
+\usebackgroundtemplate{}
 
 \begin{frame}{}
   \center{\Large{\textbf{Maybe more like this...}}}
 \end{frame}
 
 \usebackgroundtemplate{\includegraphics[width=\paperwidth,height=\paperheight]{tartinis-dream}}
-%\begin{frame}{}\end{frame}
+\begin{frame}{}\end{frame}
 \usebackgroundtemplate{}
 
 \begin{filecontents*}{median.hs}
@@ -571,8 +570,70 @@ type Digraph k v = JMap keys k [k #$\in$# keys]
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}{Three}
+\begin{filecontents*}{gdp-ex.hs}
+module GDP (Proof, {- etc -}) where
 
+data Proof p = QED
+
+data TRUE
+data FALSE
+data p || q
+data p && q
+data Not p
+data p == q
+
+axiom :: String -> Proof p
+axiom explanation = QED
+\end{filecontents*}
+\begin{filecontents*}{gdp-comb.hs}
+-- module GDP, continued:
+
+orIntroL :: Proof p -> Proof (p || q)
+orIntroL _ = QED
+
+orElim :: (Proof p        -> Proof r)
+       -> (Proof q        -> Proof r)
+       -> (Proof (p || q) -> Proof r)
+orElim _ _ _ = QED
+       
+andIntro :: Proof p -> Proof q -> Proof (p && q)
+andIntro _ _ = QED
+
+refl :: Proof (x == x)
+refl = QED
+
+-- ...and many, many more
+\end{filecontents*}
+
+\begin{filecontents*}{gdp-ghost.hs}
+-- module GDP, continued:
+  
+newtype (x ::: p) = SuchThat x
+
+bare :: (x ::: p) -> x
+bare = coerce
+
+contextOf :: (x ::: p) -> Proof p
+contextOf _ = QED
+
+(...) :: x -> Proof p -> (x ::: p)
+x ...proof = coerce x
+
+(.||) :: (x -> y) -> (Proof p -> Proof q) -> (x ::: p) -> (y ::: q)
+f -| impl = coerce f
+
+\end{filecontents*}
+
+\begin{frame}{Factoring orthogonal concerns}
+\inputminted{haskell}{gdp-ex.hs}
+\end{frame}
+
+\begin{frame}{Factoring orthogonal concerns}
+\inputminted{haskell}{gdp-comb.hs}
+\end{frame}
+
+\begin{frame}{Factoring orthogonal concerns}
+\inputminted{haskell}{gdp-ghost.hs}
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
