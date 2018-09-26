@@ -3,8 +3,10 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
+{-# LANGUAGE PolyKinds #-}
 module GDP
     ( type (:::)
+    , type (?)
     , type (==)
     , type (&&)
     , type (||)
@@ -20,8 +22,10 @@ module GDP
     , andElimL
     , andElimR
     , absurd
-
+    , because
     , axiom
+    , contextOf
+    , bare
     ) where
 
 import The
@@ -42,6 +46,14 @@ data p || q
 data x == y
 
 newtype x ::: p = SuchThat x
+
+contextOf :: (x ::: p) -> Proof p
+contextOf _ = QED
+
+bare :: (x ::: p) -> x
+bare = coerce
+
+newtype x ? p = Refined x
 
 instance The x a => The (x ::: p) a where
     the = the . (coerce :: (x ::: p) -> x)
@@ -73,5 +85,5 @@ andElimR _ = QED
 absurd :: Proof False -> Proof p
 absurd _ = QED
 
-test :: Proof (p && q) -> Proof (p || q)
-test = orIntroL . andElimL
+because :: (Proof (p a) -> Proof (q b)) -> (a ? p) -> b -> (b ? q)
+because _ _ = coerce

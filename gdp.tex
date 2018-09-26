@@ -268,19 +268,20 @@ mergeMay comp xs ys =
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\usebackgroundtemplate{%
-\tikz[overlay,remember picture] \node[at=(current page.center)] {
-   \includegraphics[height=\paperheight]{angel}};
-}
-\begin{frame}{}\end{frame}
-\usebackgroundtemplate{}
+%% \usebackgroundtemplate{%
+%% \tikz[overlay,remember picture] \node[at=(current page.center)] {
+%%      \includegraphics[height=\paperheight]{angel}
+%% };
+%% }
+%% \begin{frame}{}\end{frame}
+%% \usebackgroundtemplate{}
 
 \begin{frame}{}
   \center{\Large{\textbf{Maybe more like this...}}}
 \end{frame}
 
 \usebackgroundtemplate{\includegraphics[width=\paperwidth,height=\paperheight]{tartinis-dream}}
-\begin{frame}{}\end{frame}
+%\begin{frame}{}\end{frame}
 \usebackgroundtemplate{}
 
 \begin{filecontents*}{median.hs}
@@ -342,7 +343,7 @@ myMergeDown xs ys =
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{filecontents*}{named.hs}
+\begin{filecontents*}{named-ex.hs}
 module Named (name, type (~~)) where
                       -- ^ Constructor NOT exported!
 import Data.Coerce
@@ -360,7 +361,7 @@ name x cont = cont (coerce x)
 \end{filecontents*}
 
 \begin{frame}{Key idea \#1: phantom type-level names for values}
-\inputminted{haskell}{named.hs}
+\inputminted{haskell}{named-ex.hs}
 \begin{tikzpicture}[overlay, remember picture]
         \node[below right =1cm and 0.5cm of current page.north west] (A1) {};
         \node[below left  =4cm and 0.5cm of current page.north east] (A2) {};
@@ -477,6 +478,25 @@ myMergeDown xs ys =
 \begin{frame}{}\end{frame}
 \usebackgroundtemplate{}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{filecontents*}{oprev.hs}
+op :: ((a -> a -> Ordering) ~~ comp)
+   -> ((a -> a -> Ordering) ~~ Op comp)
+
+rev :: ([a] ~~ xs) -> ([a] ~~ Rev xs)
+rev = defn . reverse . the
+
+op_rev_axiom :: Proof (SortedBy (Op comp) (Rev xs))
+             -> Proof (SortedBy comp xs)
+op_rev_axiom = axiom
+             
+because :: (a ? p) -> (Proof (p a) -> Proof (q b)) -> (b ? q)
+             
+myMerge :: ([a] ? SortedBy comp)
+        -> ([a] ? SortedBy (Op comp))
+        -> ([a] ? SortedBy comp)
+myMerge xs ys = mergeGDP xs (rev ys `because` op_rev_lemma)
+\end{filecontents*}
 
 \begin{filecontents*}{jmap.hs}
 -- Ghosts of departed key sets
