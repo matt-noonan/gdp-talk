@@ -5,9 +5,6 @@ tmp
 *.snm
 *.nav
 *.log
-*.cpp
-*.agda
-*.hs
 _minted-gdp/
 *.toc
 .stack-work

@@ -1,1 +1,6 @@
-\beamer@sectionintoc {1}{First Section}{2}{0}{1}
+\beamer@sectionintoc {1}{How can we make good APIs?}{3}{0}{1}
+\beamer@sectionintoc {2}{A case study in API design}{12}{0}{2}
+\beamer@sectionintoc {3}{Can we do better?}{25}{0}{3}
+\beamer@sectionintoc {4}{Ghosts of Departed Proofs}{38}{0}{4}
+\beamer@sectionintoc {5}{Examples}{50}{0}{5}
+\beamer@sectionintoc {6}{Summary}{57}{0}{6}

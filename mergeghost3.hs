@@ -1,5 +1,4 @@
-import Named     (name)
-import GDP.Merge (sortGDP, mergeGDP)
+import GDP.Merge
 
 myMergeDown :: [Int] -> [Int] -> [Int]
 myMergeDown xs ys =
@@ -7,4 +6,4 @@ myMergeDown xs ys =
     let xs' = sortGDP comp xs
         ys' = sortGDP comp ys
 
-    in the (mergeGDP comp xs' ys')
+    in      the  (mergeGDP comp xs' ys')

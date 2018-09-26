@@ -4,6 +4,7 @@ module GDP.Merge (SortedBy, mergeGDP, sortGDP) where
 -- A `SortedBy comp a` is an `a` that
 -- has been sorted by `comp`.
 newtype SortedBy comp a = SortedBy a
+
 instance The (SortedBy comp a) a
 
 -- How do we get a `SortedBy comp [a]`?
@@ -13,5 +14,3 @@ sortGDP :: ((a -> a -> Ordering) ~~ comp)
         -> SortedBy comp [a]
 
 sortGDP comp = coerce . sortBy (the comp)
-
--- to be continued...
