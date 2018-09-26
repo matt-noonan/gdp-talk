@@ -1,0 +1,12 @@
+*.aux
+*.out
+tmp
+*.pdf
+*.snm
+*.nav
+*.log
+*.cpp
+*.agda
+*.hs
+_minted-gdp/
+*.toc
