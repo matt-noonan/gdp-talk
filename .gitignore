@@ -10,3 +10,5 @@ tmp
 *.hs
 _minted-gdp/
 *.toc
+.stack-work
+*~
