@@ -2,8 +2,13 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE TypeApplications #-}
 
-{-# LANGUAGE PolyKinds #-}
 module GDP
     ( type (:::)
     , type (?)
@@ -22,14 +27,19 @@ module GDP
     , andElimL
     , andElimR
     , absurd
-    , because
     , axiom
     , contextOf
     , bare
+    , because
+    , noting
+    , note
+    , Fact
     ) where
 
 import The
+import Named
 import Data.Coerce
+import Unsafe.Coerce
 
 data Proof p = QED
 
@@ -45,7 +55,14 @@ data p && q
 data p || q
 data x == y
 
-newtype x ::: p = SuchThat x
+newtype SuchThat p x = SuchThat x
+instance Functor (SuchThat p) where
+    fmap = coerce
+    
+type x ::: p = SuchThat p x
+
+because :: (x ::: p) -> (Proof p -> Proof q) -> (x ::: q)
+x `because` proof = coerce x
 
 contextOf :: (x ::: p) -> Proof p
 contextOf _ = QED
@@ -85,5 +102,49 @@ andElimR _ = QED
 absurd :: Proof False -> Proof p
 absurd _ = QED
 
-because :: (Proof (p a) -> Proof (q b)) -> (a ? p) -> b -> (b ? q)
-because _ _ = coerce
+--------------------
+
+{-
+type Fact p = Given (Proof p)
+
+using :: Fact p => (Proof p -> Proof q) -> (Fact q => t) -> t
+using impl = give (impl given)
+
+noting :: a => (a :- b) -> (b => r) -> r
+noting impl k = k \\ impl
+
+on :: (Proof (p n) -> Proof q) -> (a ~~ n) -> (Fact (p n) :- Fact q)
+on impl _ = impl2sub impl
+
+impl2sub :: forall p q. (Proof p -> Proof q) -> (Fact p :- Fact q)
+impl2sub impl = Sub (give (impl (given :: Proof p)) Dict)
+
+note :: Proof p -> (Fact p => t) -> t
+note = give
+-}
+
+class Fact p
+
+newtype WithFact p t = WithFact (Fact p => t)
+
+trustme :: forall p t. (Fact p => t) -> t
+trustme x = unsafeCoerce (WithFact x :: WithFact p t) ()
+
+using :: forall p q t. Fact p => (Proof p -> Proof q) -> (Fact q => t) -> t
+using _ = trustme @q
+
+{-
+noting :: a => (a :- b) -> (b => r) -> r
+noting impl k = k \\ impl
+
+on :: (Proof (p n) -> Proof q) -> (a ~~ n) -> (Fact (p n) :- Fact q)
+on impl _ = impl2sub impl
+
+impl2sub :: forall p q. (Proof p -> Proof q) -> (Fact p :- Fact q)
+impl2sub impl = Sub ((trustme @p) Dict)
+-}
+note :: forall p t. Proof p -> (Fact p => t) -> t
+note _ = trustme @p
+
+noting :: forall p q a n r. (Proof (p n) -> Proof q) -> (a ~~ n) -> (Fact q => r) -> r
+noting _ _ = trustme @q

@@ -1,5 +1,6 @@
 op :: ((a -> a -> Ordering) ~~ comp)
    -> ((a -> a -> Ordering) ~~ Op comp)
+op = defn . flip . the
 
 rev :: ([a] ~~ xs) -> ([a] ~~ Rev xs)
 rev = defn . reverse . the
@@ -13,4 +14,4 @@ because :: (a ? p) -> (Proof (p a) -> Proof (q b)) -> (b ? q)
 myMerge :: ([a] ? SortedBy comp)
         -> ([a] ? SortedBy (Op comp))
         -> ([a] ? SortedBy comp)
-myMerge xs ys = mergeGDP xs (rev ys `because` op_rev_lemma)
+myMerge xs ys = mergeGDP xs (fmap rev ys `because` sort'rev)

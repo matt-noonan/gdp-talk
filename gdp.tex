@@ -21,6 +21,7 @@
 \usetikzlibrary{snakes}
 \usetikzlibrary{positioning}
 \usetikzlibrary{arrows}
+\usetikzlibrary{shapes.symbols}
 
 \usepackage{verbatimbox}
 
@@ -289,21 +290,30 @@ import FancySafeMerge
 myMergeDown :: [Int] -> [Int] -> [Int]
 myMergeDown xs ys =
     let comp = comparing Down
-        xs' = sortBy comp xs
-        ys' = sortBy comp ys
+        xs' = sortBy  comp xs
+        ys' = sortBy  comp ys
 
     in  fromJust (mergeMay comp xs' ys')
 \end{filecontents*}
 \begin{frame}{Leading the user into sin and vice}
 \inputminted{haskell}{median.hs}
+\begin{tikzpicture}[overlay, remember picture]
+  \only<2>{\node[starburst, draw, minimum width=3cm, minimum height=2cm,red,text=black,opacity=0.5,fill=yellow,line width=1.5pt, above right =2.561cm and 2.76cm of current page.south west] {\footnotesize\texttt{fromJust}};}
+  \end{tikzpicture}
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}{Why is the user frustrated?}
   \begin{itemize}
     \pause\item The library API demands a precondition is met.
-  \pause\item The library forces error checks by returning option types.
-  \pause\item The user correctly ensured that the precondition held.
+  \pause\item The library enforces preconditions by returning option types.
+  \pause\\\bigskip
+
+  \qquad\qquad\qquad\qquad but...
+  \bigskip
+
+  \pause
+\item The user meticulously ensured that the precondition held.
   \end{itemize}
   \pause...so why are we making them check the \texttt{Nothing} case?!
 \end{frame}
@@ -478,24 +488,206 @@ myMergeDown xs ys =
 \usebackgroundtemplate{}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{filecontents*}{oprev.hs}
-op :: ((a -> a -> Ordering) ~~ comp)
-   -> ((a -> a -> Ordering) ~~ Op comp)
+\begin{frame}{Some lingering questions}
 
-rev :: ([a] ~~ xs) -> ([a] ~~ Rev xs)
-rev = defn . reverse . the
+  \begin{itemize}
+  \item How do we decide which properties get \texttt{newtype} wrappers?
+  \bigskip
 
-op_rev_axiom :: Proof (SortedBy (Op comp) (Rev xs))
-             -> Proof (SortedBy comp xs)
-op_rev_axiom = axiom
-             
-because :: (a ? p) -> (Proof (p a) -> Proof (q b)) -> (b ? q)
-             
-myMerge :: ([a] ? SortedBy comp)
-        -> ([a] ? SortedBy (Op comp))
-        -> ([a] ? SortedBy comp)
-myMerge xs ys = mergeGDP xs (rev ys `because` op_rev_lemma)
+\item How do we handle properties involving multiple values?
+  \bigskip
+  
+\item How do we know that we have given the user enough information to complete their proofs?
+  \end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{filecontents*}{gdp-ex.hs}
+module GDP (Proof, axiom, {- etc -}) where
+
+data Proof p = QED
+
+axiom :: String -> Proof p
+axiom reason = QED
+
+newtype a ::: p = WithContext a
+instance The (a ::: p) a
+
+toContext   :: Proof p -> a -> (a ::: p)
+fromContext :: (a ::: p)    -> Proof p
+
+class Fact p
+
+note   :: Proof p -> (Fact p => t) -> t
+recall :: (Fact p => t) -> Proof p
 \end{filecontents*}
+\begin{filecontents*}{gdp-comb.hs}
+-- module GDP, continued:
+data p || q
+data p && q
+data x == y
+
+orIntroL :: Proof p -> Proof (p || q)
+
+orElim :: (Proof p        -> Proof r)
+       -> (Proof q        -> Proof r)
+       -> (Proof (p || q) -> Proof r)
+       
+andIntro :: Proof p -> Proof q -> Proof (p && q)
+
+refl :: Proof (x == x)
+
+-- ...and many, many more
+\end{filecontents*}
+
+\begin{frame}{Key idea \#4: ghostly proofs}
+\inputminted{haskell}{gdp-ex.hs}
+\begin{tikzpicture}[overlay, remember picture]
+        \node[below right =1cm and 0.5cm of current page.north west] (A1) {};
+        \node[below left  =4.1cm and 0.5cm of current page.north east] (A2) {};
+
+        \node[below right =4.1cm and 0.5cm of current page.north west] (B1) {};
+        \node[below left  =6.9cm and 0.5cm of current page.north east] (B2) {};
+
+        \node[below right =6.9cm and 0.5cm of current page.north west] (C1) {};
+        \node[below left  =9.2cm and 0.5cm of current page.north east] (C2) {};
+
+        \only<2,3>{\draw[draw=none, fill=white, opacity=0.8] (A1) rectangle (A2);}
+        \only<1>{\draw[draw=orange, thick] (A1) rectangle (A2); }
+        \only<1,3>{\draw[draw=none, fill=white, opacity=0.8] (B1) rectangle (B2);}
+        \only<2>{\draw[draw=orange, thick] (B1) rectangle (B2); }
+        \only<1,2>{\draw[draw=none, fill=white, opacity=0.8] (C1) rectangle (C2);}
+        \only<3>{\draw[draw=orange, thick] (C1) rectangle (C2); }
+\end{tikzpicture}
+\end{frame}
+
+\begin{frame}{Proof combinators}
+\inputminted{haskell}{gdp-comb.hs}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{filecontents*}{listshape.hs}
+data IsNil  xs
+data IsCons xs  
+
+pattern Nil  :: () => Fact (IsNil  xs) => ([a] ~~ xs)
+pattern Cons :: () => Fact (IsCons xs) => ([a] ~~ xs)
+
+head :: Fact (IsCons xs) => ([a] ~~ xs) ->  a
+head xs = Prelude.head (the xs)
+
+tail :: Fact (IsCons xs) => ([a] ~~ xs) -> [a]
+tail xs = Prelude.tail (the xs)
+\end{filecontents*}
+
+\begin{filecontents*}{safehead.hs}
+newtype Reverse xs = Reverse Defn
+
+reverse :: ([a] ~~ xs) -> ([a] ~~ Reverse xs)
+reverse xs = defn (Prelude.reverse (the xs))
+
+rev'rev  :: Proof (xs == Reverse (Reverse xs))
+rev'rev = axiom "reversing twice is identity"
+
+rev'cons ::
+  Proof (IsCons xs) -> Proof (IsCons (Reverse xs))
+rev'cons _ = axiom "reverse preserves cons-ness"
+\end{filecontents*}
+
+\begin{frame}{Ghosts of list shapes}
+\inputminted{haskell}{listshape.hs}
+\begin{tikzpicture}[overlay, remember picture]
+        \node[below right =1.9cm and 0.5cm of current page.north west] (A1) {};
+        \node[below left  =4.5cm and 0.5cm of current page.north east] (A2) {};
+
+        \node[below right =4.5cm and 0.5cm of current page.north west] (B1) {};
+        \node[below left  =7.5cm and 0.5cm of current page.north east] (B2) {};
+
+        \only<2>{\draw[draw=none, fill=white, opacity=0.8] (A1) rectangle (A2);}
+        \only<1>{\draw[draw=orange, thick] (A1) rectangle (A2); }
+        \only<1>{\draw[draw=none, fill=white, opacity=0.8] (B1) rectangle (B2);}
+        \only<2>{\draw[draw=orange, thick] (B1) rectangle (B2); }
+\end{tikzpicture}
+\end{frame}
+
+\begin{frame}{Library-provided lemmas}
+\inputminted{haskell}{safehead.hs}
+\begin{tikzpicture}[overlay, remember picture]
+        \node[below right =1.9cm and 0.5cm of current page.north west] (A1) {};
+        \node[below left  =4cm and 0.5cm of current page.north east] (A2) {};
+
+        \node[below right =4cm and 0.5cm of current page.north west] (B1) {};
+        \node[below left  =7.5cm and 0.5cm of current page.north east] (B2) {};
+
+        \only<2>{\draw[draw=none, fill=white, opacity=0.8] (A1) rectangle (A2);}
+        \only<1>{\draw[draw=orange, thick] (A1) rectangle (A2); }
+        \only<1>{\draw[draw=none, fill=white, opacity=0.8] (B1) rectangle (B2);}
+        \only<2>{\draw[draw=orange, thick] (B1) rectangle (B2); }
+\end{tikzpicture}
+\end{frame}
+
+\begin{filecontents*}{uselist.hs}
+main :: IO ()
+main = do
+  args <- getArgs
+  name args $ \args -> case args of
+    Nil  -> putStrLn "No arguments!"
+    Cons -> noting rev'cons args $ do
+      print (head args)
+      print (head (reverse args))
+\end{filecontents*}
+\begin{filecontents*}{uselist-wrong.hs}
+main :: IO ()
+main = do
+  args <- getArgs
+  name args $ \args -> case args of
+    Nil  -> putStrLn "No arguments!"
+    Cons -> do
+      print (head args)
+      print (head (reverse args))
+\end{filecontents*}
+\begin{frame}{Using the safe list API}
+  \inputminted{haskell}{uselist-wrong.hs}
+\only<2>{\begin{tikzpicture}[overlay,remember picture] \node[below =1.8cm of current page.center] {
+    \includegraphics[height=2.7cm]{error}};
+  \end{tikzpicture}}
+\end{frame}
+\begin{frame}{Using the safe list API}
+  \inputminted{haskell}{uselist.hs}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  \section{Summary}   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}{API design with Ghosts of Departed Proofs}
+  \begin{itemize}
+  \item{Use \alert{existentially-quantified names} to discuss values at the type level.}
+  \bigskip
+  \item{Avoid boolean blindness by \alert{returning proofs to the user}.}
+  \bigskip
+  \item{Avoid runtime overhead by putting \alert{proofs in phantom types}.}
+  \bigskip
+  \item{Give the user \alert{combinators for constructing proofs}.}
+  \end{itemize}
+
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}{Try it out!}
+  \begin{itemize}
+  \item{The \texttt{gdp} library is on Hackage and Stackage
+    \url{http://hackage.haskell.org/package/gdp}\medskip
+  }
+  \item{The paper's repo has smaller examples that are easy to play with
+    in \texttt{ghci} (see the \texttt{gdp-demo} subdirectory)
+    \url{https://github.com/matt-noonan/gdp-paper}\medskip}
+  \item{\texttt{chessai} implemented the ``\texttt{ST}-with-sharing'' code
+    in the \texttt{st2} library (also on Hackage) \url{https://github.com/chessai/st2}}
+  \end{itemize}
+  \medskip
+  \Large{Thank you for your time!}
+\end{frame}
 
 \begin{filecontents*}{jmap.hs}
 -- Ghosts of departed key sets
@@ -503,18 +695,20 @@ newtype JMap keys k v = JMap (Map k v)
 newtype k #$\in$# keys      = Key k
 
 -- Key search, avoiding boolean blindness
-member :: k -> JMap keys k v -> Maybe (k #$\in$# keys)
+member :: Ord k => k -> JMap keys k v -> Maybe (k #$\in$# keys)
 member k m = if Map.member k (the m)
                then Just (coerce k)
                else Nothing
                
 -- Maybe-free lookup
-lookup :: (k #$\in$# keys) -> JMap keys k v -> v
-lookup k m = Map.lookup (the k) (the m)
+lookup :: Ord k => (k #$\in$# keys) -> JMap keys k v -> v
+lookup k m = fromJust (Map.lookup (the k) (the m))
 
 -- A safe adjacency-list type for directed graphs
 type Digraph k v = JMap keys k [k #$\in$# keys]
 \end{filecontents*}
+
+\section{Additional examples}
 
 \begin{frame}{Maybe-free lookup in maps}
 \inputminted{haskell}{jmap.hs}
@@ -542,125 +736,6 @@ type Digraph k v = JMap keys k [k #$\in$# keys]
 \end{tikzpicture}
 \end{frame}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\begin{filecontents*}{containers.hs}
--- Ghostly predicates
-data Keys m
-data x #$\in$# s
-
--- Key search, avoiding boolean blindness
-member :: (k ~~ key)
-       -> (Map k v ~~ m)
-       -> Maybe (k ~~ key ::: key #$\in$# Keys m)
-member k m = if Map.member k (the m)
-               then Just (coerce k)
-               else Nothing
-               
--- Maybe-free lookup
-lookup :: (k #$\in$# keys) -> JMap keys k v -> v
-lookup k m = Map.lookup (the k) (the m)
-
--- A safe adjacency-list type for directed graphs
-type Digraph k v = JMap keys k [k #$\in$# keys]
-\end{filecontents*}
-
-\begin{frame}{Working with a more complex API}
-\inputminted{haskell}{containers.hs}
-\end{frame}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{filecontents*}{gdp-ex.hs}
-module GDP (Proof, {- etc -}) where
-
-data Proof p = QED
-
-data TRUE
-data FALSE
-data p || q
-data p && q
-data Not p
-data p == q
-
-axiom :: String -> Proof p
-axiom explanation = QED
-\end{filecontents*}
-\begin{filecontents*}{gdp-comb.hs}
--- module GDP, continued:
-
-orIntroL :: Proof p -> Proof (p || q)
-orIntroL _ = QED
-
-orElim :: (Proof p        -> Proof r)
-       -> (Proof q        -> Proof r)
-       -> (Proof (p || q) -> Proof r)
-orElim _ _ _ = QED
-       
-andIntro :: Proof p -> Proof q -> Proof (p && q)
-andIntro _ _ = QED
-
-refl :: Proof (x == x)
-refl = QED
-
--- ...and many, many more
-\end{filecontents*}
-
-\begin{filecontents*}{gdp-ghost.hs}
--- module GDP, continued:
-  
-newtype (x ::: p) = SuchThat x
-
-bare :: (x ::: p) -> x
-bare = coerce
-
-contextOf :: (x ::: p) -> Proof p
-contextOf _ = QED
-
-(...) :: x -> Proof p -> (x ::: p)
-x ...proof = coerce x
-
-(.||) :: (x -> y) -> (Proof p -> Proof q) -> (x ::: p) -> (y ::: q)
-f -| impl = coerce f
-
-\end{filecontents*}
-
-\begin{frame}{Factoring orthogonal concerns}
-\inputminted{haskell}{gdp-ex.hs}
-\end{frame}
-
-\begin{frame}{Factoring orthogonal concerns}
-\inputminted{haskell}{gdp-comb.hs}
-\end{frame}
-
-\begin{frame}{Factoring orthogonal concerns}
-\inputminted{haskell}{gdp-ghost.hs}
-\end{frame}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\begin{frame}{Four}
-
-\end{frame}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}{Five}
-
-\end{frame}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}{Six}
-
-\end{frame}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\begin{frame}{Seven}
-
-\end{frame}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  \section{Examples}   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{filecontents*}{hashes.hs}
 newtype HashOf x = HashOf Defn
@@ -714,52 +789,6 @@ symm   :: STRef (mine #$\cap$# yours) a -> STRef (yours #$\cap$# mine) a
   \inputminted{haskell}{st2.hs}
 \end{frame}
 
-\begin{frame}{Maybe-free lookup in maps}
-  \inputminted{haskell}{jmap.hs}
-\end{frame}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}{Two}
-
-\end{frame}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}{Three}
-
-\end{frame}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  \section{Summary}   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}{API design with Ghosts of Departed Proofs}
-  \begin{itemize}
-  \item{Use \alert{existentially-quantified names} to discuss values at the type level.}
-  \bigskip
-  \item{Avoid boolean blindness by \alert{returning proofs to the user}.}
-  \bigskip
-  \item{Avoid runtime overhead by putting \alert{proofs in phantom types}.}
-  \bigskip
-  \item{Give the user \alert{combinators for reasoning} about proofs.}
-  \end{itemize}
-
-\end{frame}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\begin{frame}{Try it out!}
-  \begin{itemize}
-  \item{The \texttt{gdp} library is on Hackage and Stackage
-    \url{http://hackage.haskell.org/package/gdp}\medskip
-  }
-  \item{The paper's repo has smaller examples that are easy to play with
-    in \texttt{ghci} (see the \texttt{gdp-demo} subdirectory)
-    \url{https://github.com/matt-noonan/gdp-paper}\medskip}
-  \item{\texttt{chessai} implemented the ``\texttt{ST}-with-sharing'' code
-    in the \texttt{st2} library (also on Hackage) \url{https://github.com/chessai/st2}}
-  \end{itemize}
-  \medskip
-  \Large{Thank you for your time!}
-\end{frame}
 
 \end{document}
 
